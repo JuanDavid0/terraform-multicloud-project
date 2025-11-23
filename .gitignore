@@ -50,3 +50,13 @@ ENV/
 env/
 .env
 *.pyc
+
+# Archivos antiguos pre-modularización (DEPRECATED - pueden eliminarse después de validar)
+# network.tf
+# compute.tf
+# database.tf
+# storage.tf
+# security.tf
+# alb.tf
+# sync_functions.tf
+# azure_data.tf

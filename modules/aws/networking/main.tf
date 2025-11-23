@@ -1,66 +1,79 @@
-# 1. Obtener las Zonas de Disponibilidad (AZ) disponibles en la región
-# Esto hace que el código sirva para cualquier región sin cambios manuales
+# ---------------------------------------------------------
+# AWS NETWORKING MODULE
+# Gestiona VPC, Subnets, Internet Gateway, NAT Gateway y Route Tables
+# ---------------------------------------------------------
+
+# 1. Obtener las Zonas de Disponibilidad disponibles en la región
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
 # ---------------------------------------------------------
-# 2. INTERNET GATEWAY (IGW)
-# Es la "puerta principal" de la VPC hacia internet.
-# Sin esto, nadie puede entrar ni salir.
+# 2. VPC (Red Virtual Principal)
+# ---------------------------------------------------------
+resource "aws_vpc" "main_vpc" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+
+  tags = {
+    Name = "${var.project_name}-VPC"
+  }
+}
+
+# ---------------------------------------------------------
+# 3. INTERNET GATEWAY (Puerta hacia Internet)
 # ---------------------------------------------------------
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main_vpc.id
 
   tags = {
-    Name = "${var.proyecto_nombre}-IGW"
+    Name = "${var.project_name}-IGW"
   }
 }
 
 # ---------------------------------------------------------
-# 3. SUBREDES PÚBLICAS (Zona 1 y Zona 2)
-# Aquí pondremos el Load Balancer y el NAT Gateway.
+# 4. SUBREDES PÚBLICAS (Zona 1 y Zona 2)
 # ---------------------------------------------------------
 resource "aws_subnet" "public_subnets" {
-  count                   = 2 # Crea 2 subredes (una por cada CIDR definido en variables)
+  count                   = 2
   vpc_id                  = aws_vpc.main_vpc.id
   cidr_block              = var.public_subnet_cidrs[count.index]
   availability_zone       = data.aws_availability_zones.available.names[count.index]
-  map_public_ip_on_launch = true # Asigna IP pública automáticamente
+  map_public_ip_on_launch = true
 
   tags = {
-    Name = "${var.proyecto_nombre}-Public-Subnet-${count.index + 1}"
+    Name = "${var.project_name}-Public-Subnet-${count.index + 1}"
   }
 }
 
 # ---------------------------------------------------------
-# 4. NAT GATEWAY (Costo $$$)
-# Permite que las Lambdas/Contenedores PRIVADOS salgan a internet (hacia Azure)
-# pero impide que internet entre directamente a ellos.
+# 5. NAT GATEWAY (Salida para recursos privados)
 # ---------------------------------------------------------
 
-# Primero necesitamos una IP Elástica (IP Fija)
+# IP Elástica para el NAT Gateway
 resource "aws_eip" "nat_eip" {
-  domain = "vpc" 
+  domain = "vpc"
+
+  tags = {
+    Name = "${var.project_name}-NAT-EIP"
+  }
 }
 
-# Creamos el NAT Gateway en la PRIMERA subred pública
+# NAT Gateway en la primera subred pública
 resource "aws_nat_gateway" "nat_gw" {
   allocation_id = aws_eip.nat_eip.id
   subnet_id     = aws_subnet.public_subnets[0].id
 
   tags = {
-    Name = "${var.proyecto_nombre}-NAT-GW"
+    Name = "${var.project_name}-NAT-GW"
   }
 
-  # Para asegurar el orden, esperamos a que exista el IGW
   depends_on = [aws_internet_gateway.igw]
 }
 
 # ---------------------------------------------------------
-# 5. SUBREDES PRIVADAS (Zona 1 y Zona 2)
-# Aquí vivirán tus Microservicios, DynamoDB y Lambdas.
-# Son invisibles desde internet directo.
+# 6. SUBREDES PRIVADAS (Zona 1 y Zona 2)
 # ---------------------------------------------------------
 resource "aws_subnet" "private_subnets" {
   count             = 2
@@ -69,15 +82,15 @@ resource "aws_subnet" "private_subnets" {
   availability_zone = data.aws_availability_zones.available.names[count.index]
 
   tags = {
-    Name = "${var.proyecto_nombre}-Private-Subnet-${count.index + 1}"
+    Name = "${var.project_name}-Private-Subnet-${count.index + 1}"
   }
 }
 
 # ---------------------------------------------------------
-# 6. TABLAS DE ENRUTAMIENTO (El mapa de navegación)
+# 7. TABLAS DE ENRUTAMIENTO
 # ---------------------------------------------------------
 
-# Tabla para lo PÚBLICO: Todo el tráfico (0.0.0.0/0) va al Internet Gateway
+# Tabla para recursos públicos
 resource "aws_route_table" "public_rt" {
   vpc_id = aws_vpc.main_vpc.id
 
@@ -87,11 +100,11 @@ resource "aws_route_table" "public_rt" {
   }
 
   tags = {
-    Name = "${var.proyecto_nombre}-Public-RT"
+    Name = "${var.project_name}-Public-RT"
   }
 }
 
-# Tabla para lo PRIVADO: Todo el tráfico de salida va al NAT Gateway
+# Tabla para recursos privados
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.main_vpc.id
 
@@ -101,23 +114,22 @@ resource "aws_route_table" "private_rt" {
   }
 
   tags = {
-    Name = "${var.proyecto_nombre}-Private-RT"
+    Name = "${var.project_name}-Private-RT"
   }
 }
 
 # ---------------------------------------------------------
-# 7. ASOCIACIONES DE TABLAS
-# Conectamos las subredes a sus respectivas tablas
+# 8. ASOCIACIONES DE TABLAS DE ENRUTAMIENTO
 # ---------------------------------------------------------
 
-# Asociar las 2 subredes públicas a la tabla pública
+# Asociar subredes públicas a la tabla pública
 resource "aws_route_table_association" "public_assoc" {
   count          = 2
   subnet_id      = aws_subnet.public_subnets[count.index].id
   route_table_id = aws_route_table.public_rt.id
 }
 
-# Asociar las 2 subredes privadas a la tabla privada
+# Asociar subredes privadas a la tabla privada
 resource "aws_route_table_association" "private_assoc" {
   count          = 2
   subnet_id      = aws_subnet.private_subnets[count.index].id

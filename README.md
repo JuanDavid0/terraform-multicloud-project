@@ -1,27 +1,84 @@
 # Proyecto Terraform Multi-Cloud
 
-Proyecto de infraestructura como código (IaC) que despliega recursos en AWS y Azure de manera coordinada.
+Proyecto de infraestructura como código (IaC) que despliega recursos en AWS y Azure de manera coordinada, utilizando una **arquitectura modular** para máxima reutilización y mantenibilidad.
 
-## 📋 Estructura del Proyecto
+## 📋 Estructura del Proyecto (Modular)
 
 ```
 terraform-multicloud-project/
-├── main.tf              # Configuración principal
-├── variables.tf         # Variables reutilizables
-├── outputs.tf           # Valores de salida
-├── providers.tf         # Configuración de AWS y Azure
-├── terraform.tfvars     # Valores de variables (NO subir a Git)
-└── modules/             # Módulos reutilizables
-    ├── aws-networking/
-    ├── aws-compute/
-    ├── aws-database/
-    ├── aws-storage/
-    ├── azure-networking/
-    ├── azure-compute/
-    ├── azure-database/
-    ├── azure-storage/
-    └── lambda-sync/
+├── main.tf                          # Orquestador principal de módulos
+├── variables.tf                     # Variables globales
+├── outputs.tf                       # Outputs principales
+├── providers.tf                     # Configuración de AWS y Azure
+├── .gitignore                       # Archivos excluidos de Git
+│
+├── modules/                         # Módulos reutilizables
+│   ├── aws/
+│   │   ├── networking/              # VPC, subnets, IGW, NAT, route tables
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   └── outputs.tf
+│   │   │
+│   │   ├── security/                # Security Groups
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   └── outputs.tf
+│   │   │
+│   │   ├── alb/                     # Application Load Balancer
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   └── outputs.tf
+│   │   │
+│   │   ├── compute/                 # ECR, ECS, Fargate, IAM roles
+│   │   │   ��── main.tf
+│   │   │   ├── variables.tf
+│   │   │   └── outputs.tf
+│   │   │
+│   │   ├── database/                # DynamoDB
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   └── outputs.tf
+│   │   │
+│   │   ├── storage/                 # S3, VPC Endpoint
+│   │   │   ├── main.tf
+│   │   │   ├── variables.tf
+│   │   │   └── outputs.tf
+│   │   │
+│   │   └── lambda/                  # Funciones de sincronización
+│   │       ├── main.tf
+│   │       ├── variables.tf
+│   │       └── outputs.tf
+│   │
+│   └── azure/
+│       ├── storage/                 # Storage Account, Containers
+│       │   ├── main.tf
+│       │   ├── variables.tf
+│       │   └── outputs.tf
+│       │
+│       └── database/                # Cosmos DB
+│           ├── main.tf
+│           ├── variables.tf
+│           └── outputs.tf
+│
+└── app/                             # Código de aplicaciones
+    ├── microservice/                # Microservicio Python
+    │   ├── microservice_app.py
+    │   ├── Dockerfile
+    │   └── requirements.txt
+    │
+    └── lambda/
+        └── lambda_code/             # Código de funciones Lambda
+            ├── dynamo_sync.py       # Sync DynamoDB → Cosmos DB
+            └── s3_sync.py           # Sync S3 → Azure Blob
 ```
+
+## 🎯 Ventajas de la Arquitectura Modular
+
+✅ **Reutilización**: Cada módulo puede usarse en otros proyectos  
+✅ **Mantenibilidad**: Cambios aislados por responsabilidad  
+✅ **Escalabilidad**: Fácil agregar nuevos recursos  
+✅ **Claridad**: Separación clara entre infraestructura y aplicaciones  
+✅ **Testing**: Módulos pueden probarse independientemente
 
 ## 🚀 Requisitos Previos
 
@@ -95,22 +152,93 @@ terraform apply
 terraform destroy
 ```
 
-## 📊 Módulos
+## 📊 Descripción de Módulos
 
-### AWS Modules
-- **aws-networking**: VPC, subnets, gateways
-- **aws-compute**: Instancias EC2
-- **aws-database**: RDS PostgreSQL/MySQL
-- **aws-storage**: S3 buckets
+### 🔷 AWS Modules
 
-### Azure Modules
-- **azure-networking**: VNet, subnets, NSG
-- **azure-compute**: Máquinas virtuales
-- **azure-database**: Azure SQL Database
-- **azure-storage**: Storage Accounts
+#### `modules/aws/networking`
+- **VPC** con DNS habilitado
+- **2 Subnets públicas** (para ALB)
+- **2 Subnets privadas** (para ECS y Lambdas)
+- **Internet Gateway** para conectividad pública
+- **NAT Gateway** para salida de recursos privados
+- **Route Tables** con asociaciones
 
-### Lambda Sync
-- Función Lambda para sincronización entre AWS S3 y Azure Blob Storage
+#### `modules/aws/security`
+- **ALB Security Group**: Permite HTTP (80) desde internet
+- **ECS Security Group**: Solo acepta tráfico desde ALB
+
+#### `modules/aws/alb`
+- **Application Load Balancer** público
+- **Target Group** tipo IP para Fargate
+- **Listener** HTTP puerto 80
+
+#### `modules/aws/compute`
+- **3 Repositorios ECR** para imágenes Docker
+- **ECS Cluster** con Fargate
+- **Task Definition** (256 CPU, 512 MB RAM)
+- **ECS Service** con 2 réplicas
+- **IAM Roles** para ejecución y tareas
+
+#### `modules/aws/database`
+- **DynamoDB Table** con billing PAY_PER_REQUEST
+- **Streaming habilitado** para sincronización
+
+#### `modules/aws/storage`
+- **S3 Bucket** privado con nombre único
+- **VPC Endpoint Gateway** para acceso privado desde VPC
+
+#### `modules/aws/lambda`
+- **Lambda DynamoDB Sync**: Replica cambios a Cosmos DB
+- **Lambda S3 Sync**: Replica archivos a Azure Blob
+- **IAM Roles** con permisos necesarios
+- **Triggers** automáticos (DynamoDB Streams y S3 Events)
+
+### 🔶 Azure Modules
+
+#### `modules/azure/storage`
+- **Storage Account** con replicación LRS
+- **Container** privado para archivos replicados
+
+#### `modules/azure/database`
+- **Cosmos DB Account** con API SQL
+- **Database y Container** con partición por `/id`
+- Throughput de 400 RU/s
+
+## 🔄 Cómo Funcionan los Módulos
+
+Cada módulo es **autocontenido** con 3 archivos:
+
+1. **`main.tf`**: Recursos de Terraform
+2. **`variables.tf`**: Inputs del módulo
+3. **`outputs.tf`**: Valores exportados
+
+El archivo `main.tf` en la raíz **orquesta** todos los módulos pasando outputs como inputs:
+
+```hcl
+module "aws_networking" {
+  source = "./modules/aws/networking"
+  # ... variables
+}
+
+module "aws_alb" {
+  source = "./modules/aws/alb"
+  vpc_id = module.aws_networking.vpc_id  # ← Output del módulo networking
+  # ...
+}
+```
+
+## 🔗 Dependencias entre Módulos
+
+```
+Networking → Security, ALB, Storage
+Security → ALB, Compute, Lambda
+ALB → Compute
+Database → Lambda
+Storage → Lambda
+Azure Storage → Lambda
+Azure Database → Lambda
+```
 
 ## 🔒 Seguridad
 

@@ -1,36 +1,34 @@
 # ---------------------------------------------------------
-# IAM ROLE (Permisos para las Lambdas)
-# Las Lambdas necesitan permiso para:
-# 1. Crear logs en CloudWatch
-# 2. Leer de DynamoDB y S3
-# 3. Crear interfaces de red (porque están en VPC)
+# AWS LAMBDA MODULE
+# Funciones Lambda para sincronización con Azure
+# ---------------------------------------------------------
+
+# ---------------------------------------------------------
+# IAM ROLE para Lambdas
 # ---------------------------------------------------------
 resource "aws_iam_role" "lambda_role" {
-  name = "${var.proyecto_nombre}-LambdaRole"
+  name = "${var.project_name}-LambdaRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
+      Action    = "sts:AssumeRole"
+      Effect    = "Allow"
       Principal = { Service = "lambda.amazonaws.com" }
     }]
   })
 }
 
-# Adjuntar política básica de ejecución (Logs + VPC)
 resource "aws_iam_role_policy_attachment" "lambda_basic" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole"
 }
 
-# Adjuntar política de lectura de DynamoDB
 resource "aws_iam_role_policy_attachment" "lambda_dynamo" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaDynamoDBExecutionRole"
 }
 
-# Adjuntar política de lectura de S3
 resource "aws_iam_role_policy_attachment" "lambda_s3" {
   role       = aws_iam_role.lambda_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
@@ -38,26 +36,25 @@ resource "aws_iam_role_policy_attachment" "lambda_s3" {
 
 # ---------------------------------------------------------
 # EMPAQUETAR CÓDIGO PYTHON
-# Terraform comprime los archivos .py en .zip automáticamente
 # ---------------------------------------------------------
 data "archive_file" "zip_dynamo" {
   type        = "zip"
-  source_file = "lambda_code/dynamo_sync.py"
-  output_path = "lambda_code/dynamo_sync.zip"
+  source_file = var.dynamo_sync_code_path
+  output_path = "${path.module}/dynamo_sync.zip"
 }
 
 data "archive_file" "zip_s3" {
   type        = "zip"
-  source_file = "lambda_code/s3_sync.py"
-  output_path = "lambda_code/s3_sync.zip"
+  source_file = var.s3_sync_code_path
+  output_path = "${path.module}/s3_sync.zip"
 }
 
 # ---------------------------------------------------------
-# 1. LAMBDA PARA DYNAMODB -> AZURE
+# LAMBDA PARA DYNAMODB -> AZURE
 # ---------------------------------------------------------
 resource "aws_lambda_function" "dynamo_sync" {
   filename      = data.archive_file.zip_dynamo.output_path
-  function_name = "${var.proyecto_nombre}-SyncDynamo"
+  function_name = "${var.project_name}-SyncDynamo"
   role          = aws_iam_role.lambda_role.arn
   handler       = "dynamo_sync.lambda_handler"
   runtime       = "python3.9"
@@ -65,23 +62,22 @@ resource "aws_lambda_function" "dynamo_sync" {
 
   source_code_hash = data.archive_file.zip_dynamo.output_base64sha256
 
-  # Red: La ponemos en la VPC privada para salir por el NAT Gateway
   vpc_config {
-    subnet_ids         = aws_subnet.private_subnets[*].id
-    security_group_ids = [aws_security_group.ecs_sg.id] # Reusamos el SG interno
+    subnet_ids         = var.private_subnet_ids
+    security_group_ids = [var.ecs_security_group_id]
   }
 
   environment {
     variables = {
-      COSMOS_ENDPOINT = azurerm_cosmosdb_account.cosmos_acc.endpoint
-      COSMOS_KEY      = azurerm_cosmosdb_account.cosmos_acc.primary_key
+      COSMOS_ENDPOINT = var.cosmos_endpoint
+      COSMOS_KEY      = var.cosmos_primary_key
     }
   }
 }
 
-# TRIGGER: Conectar DynamoDB Stream a esta Lambda
+# TRIGGER: DynamoDB Stream
 resource "aws_lambda_event_source_mapping" "dynamo_trigger" {
-  event_source_arn  = aws_dynamodb_table.main_table.stream_arn
+  event_source_arn  = var.dynamodb_stream_arn
   function_name     = aws_lambda_function.dynamo_sync.arn
   starting_position = "LATEST"
 
@@ -92,17 +88,15 @@ resource "aws_lambda_event_source_mapping" "dynamo_trigger" {
 }
 
 # ---------------------------------------------------------
-# 2. LAMBDA PARA S3 -> AZURE
+# SAS TOKEN para Azure Blob
 # ---------------------------------------------------------
-# Necesitamos generar una URL SAS (Token de acceso temporal) para Azure Blob
-# Terraform puede generar esto al momento del despliegue.
 data "azurerm_storage_account_blob_container_sas" "blob_sas" {
-  connection_string = azurerm_storage_account.azure_sa.primary_connection_string
-  container_name    = azurerm_storage_container.azure_container.name
+  connection_string = var.azure_storage_connection_string
+  container_name    = var.azure_container_name
   https_only        = true
 
   start  = "2025-01-01"
-  expiry = "2026-01-01" # Token valido por un año para el reto
+  expiry = "2026-01-01"
 
   permissions {
     read   = true
@@ -114,9 +108,12 @@ data "azurerm_storage_account_blob_container_sas" "blob_sas" {
   }
 }
 
+# ---------------------------------------------------------
+# LAMBDA PARA S3 -> AZURE
+# ---------------------------------------------------------
 resource "aws_lambda_function" "s3_sync" {
   filename      = data.archive_file.zip_s3.output_path
-  function_name = "${var.proyecto_nombre}-SyncS3"
+  function_name = "${var.project_name}-SyncS3"
   role          = aws_iam_role.lambda_role.arn
   handler       = "s3_sync.lambda_handler"
   runtime       = "python3.9"
@@ -125,31 +122,29 @@ resource "aws_lambda_function" "s3_sync" {
   source_code_hash = data.archive_file.zip_s3.output_base64sha256
 
   vpc_config {
-    subnet_ids         = aws_subnet.private_subnets[*].id
-    security_group_ids = [aws_security_group.ecs_sg.id]
+    subnet_ids         = var.private_subnet_ids
+    security_group_ids = [var.ecs_security_group_id]
   }
 
   environment {
     variables = {
-      # Armamos la URL completa con el token SAS
-      AZURE_SAS_URL = "https://${azurerm_storage_account.azure_sa.name}.blob.core.windows.net/${azurerm_storage_container.azure_container.name}?${data.azurerm_storage_account_blob_container_sas.blob_sas.sas}"
+      AZURE_SAS_URL = "https://${var.azure_storage_account_name}.blob.core.windows.net/${var.azure_container_name}?${data.azurerm_storage_account_blob_container_sas.blob_sas.sas}"
     }
   }
 }
 
-# TRIGGER: S3 Notification
-# Damos permiso a S3 para invocar la Lambda
+# TRIGGER: S3 Notification Permission
 resource "aws_lambda_permission" "allow_s3" {
   statement_id  = "AllowS3Invoke"
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.s3_sync.function_name
   principal     = "s3.amazonaws.com"
-  source_arn    = aws_s3_bucket.main_bucket.arn
+  source_arn    = var.s3_bucket_arn
 }
 
-# Configuramos la notificación en el bucket
+# S3 Bucket Notification
 resource "aws_s3_bucket_notification" "bucket_notification" {
-  bucket = aws_s3_bucket.main_bucket.id
+  bucket = var.s3_bucket_id
 
   lambda_function {
     lambda_function_arn = aws_lambda_function.s3_sync.arn

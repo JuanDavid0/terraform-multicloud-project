@@ -24,7 +24,7 @@ provider "aws" {
 
 # Configuración del Proveedor Azure
 provider "azurerm" {
-features {
+  features {
     resource_group {
       prevent_deletion_if_contains_resources = false
     }
