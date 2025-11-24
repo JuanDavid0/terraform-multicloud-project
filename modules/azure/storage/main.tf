@@ -1,7 +1,7 @@
-# ---------------------------------------------------------
+
 # AZURE STORAGE MODULE
 # Storage Account y Container para replicación desde S3
-# ---------------------------------------------------------
+
 
 # Sufijo aleatorio para nombre único
 resource "random_string" "azure_suffix" {
@@ -10,9 +10,9 @@ resource "random_string" "azure_suffix" {
   upper   = false
 }
 
-# ---------------------------------------------------------
+
 # STORAGE ACCOUNT
-# ---------------------------------------------------------
+
 resource "azurerm_storage_account" "azure_sa" {
   name                     = "st${lower(var.project_name)}${random_string.azure_suffix.result}"
   resource_group_name      = var.resource_group_name
@@ -25,9 +25,9 @@ resource "azurerm_storage_account" "azure_sa" {
   }
 }
 
-# ---------------------------------------------------------
+
 # STORAGE CONTAINER
-# ---------------------------------------------------------
+
 resource "azurerm_storage_container" "azure_container" {
   name                  = "replica-archivos"
   storage_account_name  = azurerm_storage_account.azure_sa.name

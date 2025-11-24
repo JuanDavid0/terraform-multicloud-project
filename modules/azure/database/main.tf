@@ -1,7 +1,7 @@
-# ---------------------------------------------------------
+
 # AZURE DATABASE MODULE  
 # Cosmos DB para replicación desde DynamoDB
-# ---------------------------------------------------------
+
 
 # Sufijo aleatorio para nombre único
 resource "random_string" "cosmos_suffix" {
@@ -10,9 +10,9 @@ resource "random_string" "cosmos_suffix" {
   upper   = false
 }
 
-# ---------------------------------------------------------
+
 # COSMOS DB ACCOUNT
-# ---------------------------------------------------------
+
 resource "azurerm_cosmosdb_account" "cosmos_acc" {
   name                = "cosmos-${lower(var.project_name)}-${random_string.cosmos_suffix.result}"
   location            = var.location
@@ -30,18 +30,18 @@ resource "azurerm_cosmosdb_account" "cosmos_acc" {
   }
 }
 
-# ---------------------------------------------------------
+
 # COSMOS DB SQL DATABASE
-# ---------------------------------------------------------
+
 resource "azurerm_cosmosdb_sql_database" "cosmos_db" {
   name                = "ReplicaDB"
   resource_group_name = var.resource_group_name
   account_name        = azurerm_cosmosdb_account.cosmos_acc.name
 }
 
-# ---------------------------------------------------------
+
 # COSMOS DB SQL CONTAINER
-# ---------------------------------------------------------
+
 resource "azurerm_cosmosdb_sql_container" "cosmos_container" {
   name                = "TablaUsuariosReplica"
   resource_group_name = var.resource_group_name

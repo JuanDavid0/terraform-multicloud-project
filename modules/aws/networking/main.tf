@@ -1,16 +1,16 @@
-# ---------------------------------------------------------
+
 # AWS NETWORKING MODULE
 # Gestiona VPC, Subnets, Internet Gateway, NAT Gateway y Route Tables
-# ---------------------------------------------------------
+
 
 # 1. Obtener las Zonas de Disponibilidad disponibles en la región
 data "aws_availability_zones" "available" {
   state = "available"
 }
 
-# ---------------------------------------------------------
+
 # 2. VPC (Red Virtual Principal)
-# ---------------------------------------------------------
+
 resource "aws_vpc" "main_vpc" {
   cidr_block           = var.vpc_cidr
   enable_dns_support   = true
@@ -21,9 +21,9 @@ resource "aws_vpc" "main_vpc" {
   }
 }
 
-# ---------------------------------------------------------
+
 # 3. INTERNET GATEWAY (Puerta hacia Internet)
-# ---------------------------------------------------------
+
 resource "aws_internet_gateway" "igw" {
   vpc_id = aws_vpc.main_vpc.id
 
@@ -32,9 +32,9 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# ---------------------------------------------------------
+
 # 4. SUBREDES PÚBLICAS (Zona 1 y Zona 2)
-# ---------------------------------------------------------
+
 resource "aws_subnet" "public_subnets" {
   count                   = 2
   vpc_id                  = aws_vpc.main_vpc.id
@@ -47,9 +47,9 @@ resource "aws_subnet" "public_subnets" {
   }
 }
 
-# ---------------------------------------------------------
+
 # 5. NAT GATEWAY (Salida para recursos privados)
-# ---------------------------------------------------------
+
 
 # IP Elástica para el NAT Gateway
 resource "aws_eip" "nat_eip" {
@@ -72,9 +72,9 @@ resource "aws_nat_gateway" "nat_gw" {
   depends_on = [aws_internet_gateway.igw]
 }
 
-# ---------------------------------------------------------
+
 # 6. SUBREDES PRIVADAS (Zona 1 y Zona 2)
-# ---------------------------------------------------------
+
 resource "aws_subnet" "private_subnets" {
   count             = 2
   vpc_id            = aws_vpc.main_vpc.id
@@ -86,9 +86,9 @@ resource "aws_subnet" "private_subnets" {
   }
 }
 
-# ---------------------------------------------------------
+
 # 7. TABLAS DE ENRUTAMIENTO
-# ---------------------------------------------------------
+
 
 # Tabla para recursos públicos
 resource "aws_route_table" "public_rt" {
@@ -118,9 +118,9 @@ resource "aws_route_table" "private_rt" {
   }
 }
 
-# ---------------------------------------------------------
+
 # 8. ASOCIACIONES DE TABLAS DE ENRUTAMIENTO
-# ---------------------------------------------------------
+
 
 # Asociar subredes públicas a la tabla pública
 resource "aws_route_table_association" "public_assoc" {

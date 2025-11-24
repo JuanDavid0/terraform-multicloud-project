@@ -1,11 +1,11 @@
-# ---------------------------------------------------------
+
 # AWS COMPUTE MODULE
 # ECR, ECS, IAM Roles para contenedores Fargate
-# ---------------------------------------------------------
 
-# ---------------------------------------------------------
+
+
 # IAM ROLE FOR ECS EXECUTION
-# ---------------------------------------------------------
+
 resource "aws_iam_role" "ecs_execution_role" {
   name = "${var.project_name}-ECSExecRole"
 
@@ -19,9 +19,9 @@ resource "aws_iam_role" "ecs_execution_role" {
   })
 }
 
-# ---------------------------------------------------------
+
 # IAM ROLE FOR ECS TASK
-# ---------------------------------------------------------
+
 resource "aws_iam_role" "ecs_task_role" {
   name = "${var.project_name}-ECSTaskRole"
 
@@ -53,9 +53,9 @@ resource "aws_iam_role_policy_attachment" "ecs_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# ---------------------------------------------------------
+
 # ELASTIC CONTAINER REGISTRY (ECR)
-# ---------------------------------------------------------
+
 resource "aws_ecr_repository" "microservicios" {
   count                = var.ecr_repository_count
   name                 = "${lower(var.project_name)}-service-${count.index + 1}"
@@ -67,16 +67,16 @@ resource "aws_ecr_repository" "microservicios" {
   }
 }
 
-# ---------------------------------------------------------
+
 # ECS CLUSTER
-# ---------------------------------------------------------
+
 resource "aws_ecs_cluster" "main_cluster" {
   name = "${var.project_name}-Cluster"
 }
 
-# ---------------------------------------------------------
+
 # TASK DEFINITION
-# ---------------------------------------------------------
+
 resource "aws_ecs_task_definition" "app_task" {
   family                   = "${var.project_name}-Task"
   network_mode             = "awsvpc"
@@ -107,9 +107,9 @@ resource "aws_ecs_task_definition" "app_task" {
   ])
 }
 
-# ---------------------------------------------------------
+
 # ECS SERVICE
-# ---------------------------------------------------------
+
 resource "aws_ecs_service" "main_service" {
   name            = "${var.project_name}-Service"
   cluster         = aws_ecs_cluster.main_cluster.id

@@ -1,19 +1,19 @@
-# ---------------------------------------------------------
+
 # MAIN ORCHESTRATION FILE
 # Orquesta todos los módulos de AWS y Azure
-# ---------------------------------------------------------
 
-# ---------------------------------------------------------
-# AZURE RESOURCE GROUP (Debe crearse primero)
-# ---------------------------------------------------------
+
+
+# AZURE RESOURCE GROUP
+
 resource "azurerm_resource_group" "rg_azure" {
   name     = "${var.proyecto_nombre}-RG"
   location = var.azure_location
 }
 
-# ---------------------------------------------------------
+
 # AWS NETWORKING MODULE
-# ---------------------------------------------------------
+
 module "aws_networking" {
   source = "./modules/aws/networking"
 
@@ -23,9 +23,9 @@ module "aws_networking" {
   private_subnet_cidrs = var.private_subnet_cidrs
 }
 
-# ---------------------------------------------------------
+
 # AWS SECURITY MODULE
-# ---------------------------------------------------------
+
 module "aws_security" {
   source = "./modules/aws/security"
 
@@ -33,9 +33,9 @@ module "aws_security" {
   vpc_id       = module.aws_networking.vpc_id
 }
 
-# ---------------------------------------------------------
+
 # AWS ALB MODULE
-# ---------------------------------------------------------
+
 module "aws_alb" {
   source = "./modules/aws/alb"
 
@@ -45,18 +45,18 @@ module "aws_alb" {
   alb_security_group_id = module.aws_security.alb_security_group_id
 }
 
-# ---------------------------------------------------------
+
 # AWS DATABASE MODULE
-# ---------------------------------------------------------
+
 module "aws_database" {
   source = "./modules/aws/database"
 
   project_name = var.proyecto_nombre
 }
 
-# ---------------------------------------------------------
+
 # AWS STORAGE MODULE
-# ---------------------------------------------------------
+
 module "aws_storage" {
   source = "./modules/aws/storage"
 
@@ -66,9 +66,9 @@ module "aws_storage" {
   private_route_table_id = module.aws_networking.private_route_table_id
 }
 
-# ---------------------------------------------------------
+
 # AZURE STORAGE MODULE
-# ---------------------------------------------------------
+
 module "azure_storage" {
   source = "./modules/azure/storage"
 
@@ -77,9 +77,9 @@ module "azure_storage" {
   location            = azurerm_resource_group.rg_azure.location
 }
 
-# ---------------------------------------------------------
+
 # AZURE DATABASE MODULE
-# ---------------------------------------------------------
+
 module "azure_database" {
   source = "./modules/azure/database"
 
@@ -88,9 +88,9 @@ module "azure_database" {
   location            = azurerm_resource_group.rg_azure.location
 }
 
-# ---------------------------------------------------------
+
 # AWS LAMBDA MODULE
-# ---------------------------------------------------------
+
 module "aws_lambda" {
   source = "./modules/aws/lambda"
 
@@ -109,9 +109,9 @@ module "aws_lambda" {
   s3_bucket_arn                   = module.aws_storage.s3_bucket_arn
 }
 
-# ---------------------------------------------------------
+
 # AWS COMPUTE MODULE (ECS/Fargate)
-# ---------------------------------------------------------
+
 module "aws_compute" {
   source = "./modules/aws/compute"
 

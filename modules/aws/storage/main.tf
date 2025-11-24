@@ -1,7 +1,6 @@
-# ---------------------------------------------------------
 # AWS STORAGE MODULE
 # S3 Bucket con VPC Endpoint
-# ---------------------------------------------------------
+
 
 # Generador de sufijo aleatorio para nombre único global
 resource "random_string" "bucket_suffix" {
@@ -10,9 +9,9 @@ resource "random_string" "bucket_suffix" {
   upper   = false
 }
 
-# ---------------------------------------------------------
+
 # S3 BUCKET
-# ---------------------------------------------------------
+
 resource "aws_s3_bucket" "main_bucket" {
   bucket        = "${lower(var.project_name)}-files-bucket-${random_string.bucket_suffix.result}"
   force_destroy = true
@@ -22,9 +21,9 @@ resource "aws_s3_bucket" "main_bucket" {
   }
 }
 
-# ---------------------------------------------------------
+
 # BLOQUEO DE ACCESO PÚBLICO
-# ---------------------------------------------------------
+
 resource "aws_s3_bucket_public_access_block" "block_public_access" {
   bucket = aws_s3_bucket.main_bucket.id
 
@@ -34,9 +33,9 @@ resource "aws_s3_bucket_public_access_block" "block_public_access" {
   restrict_public_buckets = true
 }
 
-# ---------------------------------------------------------
+
 # VPC ENDPOINT para S3
-# ---------------------------------------------------------
+
 resource "aws_vpc_endpoint" "s3_endpoint" {
   vpc_id            = var.vpc_id
   service_name      = "com.amazonaws.${var.aws_region}.s3"

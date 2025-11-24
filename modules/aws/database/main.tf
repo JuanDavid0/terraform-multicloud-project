@@ -1,7 +1,7 @@
-# ---------------------------------------------------------
+
 # AWS DATABASE MODULE
 # DynamoDB NoSQL Table con streaming habilitado
-# ---------------------------------------------------------
+
 
 resource "aws_dynamodb_table" "main_table" {
   name         = "${var.project_name}-TablaUsuarios"

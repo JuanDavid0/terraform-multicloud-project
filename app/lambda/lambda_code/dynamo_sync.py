@@ -7,7 +7,7 @@ import urllib.request
 import urllib.parse
 from datetime import datetime
 
-# --- CLASE PARA GENERAR EL TOKEN DE SEGURIDAD (LA PARTE DIFÍCIL) ---
+# --- TOKEN DE SEGURIDAD AZURE
 class AzureAuth:
     def get_authorization_token(self, verb, resource_type, resource_id, date, master_key):
         # Decodificar la llave maestra de Azure

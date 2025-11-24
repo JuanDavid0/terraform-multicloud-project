@@ -5,7 +5,6 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# --- CONFIGURACIÓN ---
 # Estas variables vendrán desde Terraform
 TABLE_NAME = os.environ.get('DYNAMO_TABLE', 'Error-NoTableDefined')
 BUCKET_NAME = os.environ.get('S3_BUCKET', 'Error-NoBucketDefined')

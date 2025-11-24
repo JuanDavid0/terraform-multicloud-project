@@ -1,11 +1,11 @@
-# ---------------------------------------------------------
+
 # AWS LAMBDA MODULE
 # Funciones Lambda para sincronización con Azure
-# ---------------------------------------------------------
 
-# ---------------------------------------------------------
+
+
 # IAM ROLE para Lambdas
-# ---------------------------------------------------------
+
 resource "aws_iam_role" "lambda_role" {
   name = "${var.project_name}-LambdaRole"
 
@@ -34,9 +34,9 @@ resource "aws_iam_role_policy_attachment" "lambda_s3" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
 }
 
-# ---------------------------------------------------------
+
 # EMPAQUETAR CÓDIGO PYTHON
-# ---------------------------------------------------------
+
 data "archive_file" "zip_dynamo" {
   type        = "zip"
   source_file = var.dynamo_sync_code_path
@@ -49,9 +49,9 @@ data "archive_file" "zip_s3" {
   output_path = "${path.module}/s3_sync.zip"
 }
 
-# ---------------------------------------------------------
+
 # LAMBDA PARA DYNAMODB -> AZURE
-# ---------------------------------------------------------
+
 resource "aws_lambda_function" "dynamo_sync" {
   filename      = data.archive_file.zip_dynamo.output_path
   function_name = "${var.project_name}-SyncDynamo"
@@ -87,9 +87,9 @@ resource "aws_lambda_event_source_mapping" "dynamo_trigger" {
   ]
 }
 
-# ---------------------------------------------------------
+
 # SAS TOKEN para Azure Blob
-# ---------------------------------------------------------
+
 data "azurerm_storage_account_blob_container_sas" "blob_sas" {
   connection_string = var.azure_storage_connection_string
   container_name    = var.azure_container_name
@@ -108,9 +108,9 @@ data "azurerm_storage_account_blob_container_sas" "blob_sas" {
   }
 }
 
-# ---------------------------------------------------------
+
 # LAMBDA PARA S3 -> AZURE
-# ---------------------------------------------------------
+
 resource "aws_lambda_function" "s3_sync" {
   filename      = data.archive_file.zip_s3.output_path
   function_name = "${var.project_name}-SyncS3"

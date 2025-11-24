@@ -1,11 +1,7 @@
-# ---------------------------------------------------------
 # AWS SECURITY MODULE
 # Security Groups para ALB y ECS/Fargate
-# ---------------------------------------------------------
 
-# ---------------------------------------------------------
 # 1. SECURITY GROUP PARA EL LOAD BALANCER (ALB)
-# ---------------------------------------------------------
 resource "aws_security_group" "alb_sg" {
   name        = "${var.project_name}-ALB-SG"
   description = "Permitir trafico HTTP desde internet"
@@ -33,9 +29,9 @@ resource "aws_security_group" "alb_sg" {
   }
 }
 
-# ---------------------------------------------------------
+
 # 2. SECURITY GROUP PARA LOS MICROSERVICIOS (ECS/Fargate)
-# ---------------------------------------------------------
+
 resource "aws_security_group" "ecs_sg" {
   name        = "${var.project_name}-ECS-SG"
   description = "Permitir trafico solo desde el ALB"

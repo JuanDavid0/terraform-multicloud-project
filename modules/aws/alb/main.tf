@@ -1,11 +1,11 @@
-# ---------------------------------------------------------
+
 # AWS ALB (Application Load Balancer) MODULE
 # Gestiona el Load Balancer, Target Group y Listener
-# ---------------------------------------------------------
 
-# ---------------------------------------------------------
+
+
 # APPLICATION LOAD BALANCER
-# ---------------------------------------------------------
+
 resource "aws_lb" "app_alb" {
   name               = "${var.project_name}-ALB"
   internal           = false
@@ -19,9 +19,9 @@ resource "aws_lb" "app_alb" {
   }
 }
 
-# ---------------------------------------------------------
+
 # TARGET GROUP
-# ---------------------------------------------------------
+
 resource "aws_lb_target_group" "app_tg" {
   name        = "${var.project_name}-TG"
   port        = 80
@@ -40,9 +40,9 @@ resource "aws_lb_target_group" "app_tg" {
   }
 }
 
-# ---------------------------------------------------------
+
 # LISTENER
-# ---------------------------------------------------------
+
 resource "aws_lb_listener" "front_end" {
   load_balancer_arn = aws_lb.app_alb.arn
   port              = "80"

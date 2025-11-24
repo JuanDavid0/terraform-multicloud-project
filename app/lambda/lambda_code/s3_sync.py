@@ -2,7 +2,7 @@ import json
 import urllib3
 import boto3
 import os
-import urllib.parse # <--- NUEVA LIBRERÍA NECESARIA
+import urllib.parse
 
 s3 = boto3.client('s3')
 http = urllib3.PoolManager()
@@ -22,20 +22,16 @@ def lambda_handler(event, context):
         print(f"Procesando archivo: {file_key} en bucket {bucket_name}")
         
         # 1. Descargar el archivo de S3 a la memoria temporal (/tmp)
-        # Usamos 'file_key' (el nombre real con espacios) no 'raw_key'
         download_path = f"/tmp/{os.path.basename(file_key)}"
         
         s3.download_file(bucket_name, file_key, download_path)
         
         # 2. Subirlo a Azure Blob Storage
-        # Dividir URL y Token (tu corrección anterior)
         base_url, sas_token = azure_sas_url.split('?', 1)
         
-        # Construir URL final
-        # Nota: Para subir a Azure, también deberíamos limpiar el nombre o usar el raw_key si queremos preservar caracteres seguros,
-        # pero para simplicidad usaremos el nombre base.
+        # Construir URL final de subida
         safe_filename = os.path.basename(file_key)
-        # Codificamos solo el nombre para la URL de Azure por si acaso tiene espacios
+        
         encoded_filename = urllib.parse.quote(safe_filename)
         
         upload_url = f"{base_url}/{encoded_filename}?{sas_token}"

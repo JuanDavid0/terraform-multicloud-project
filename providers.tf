@@ -12,14 +12,12 @@ terraform {
       version = "~> 3.0"
     }
   }
-  # Versión mínima de Terraform requerida
   required_version = ">= 1.3.0"
 }
 
 # Configuración del Proveedor AWS
 provider "aws" {
-  region = var.aws_region # Usamos una variable para la región
-  # Terraform buscará tus credenciales configuradas en la consola (aws configure)
+  region = var.aws_region
 }
 
 # Configuración del Proveedor Azure
